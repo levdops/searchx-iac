@@ -1,0 +1,7 @@
+name: searchx-iac
+runtime: nodejs
+description: Searchx infrastructure
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-typescript

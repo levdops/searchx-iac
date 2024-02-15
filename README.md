@@ -1,0 +1,1 @@
+`pulumi login --local`
