@@ -1,6 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as awsx from "@pulumi/awsx";
+import * as random from "@pulumi/random";
+
+// FRONTEND
 
 const frontendBucket = new aws.s3.Bucket("searchx-frontend", {
     website: {
@@ -80,7 +83,7 @@ const cdn = new aws.cloudfront.Distribution("cdn", {
     viewerCertificate: {
         // acmCertificateArn: certificateArn,  // Per AWS, ACM certificate must be in the us-east-1 region.
         cloudfrontDefaultCertificate: true,
-        sslSupportMethod: "sni-only",
+        // sslSupportMethod: "sni-only",
     },
 
     // loggingConfig: {
@@ -90,6 +93,46 @@ const cdn = new aws.cloudfront.Distribution("cdn", {
     // },
 });
 
+// BACKEND
+
+const redis = new aws.elasticache.Cluster("searchx-redis", {
+    engine: "redis",
+    engineVersion: "7.1",
+    nodeType: "cache.t3.micro", // In aws free tier
+    numCacheNodes: 1,
+});
+
+const mongoPassword = new random.RandomPassword("searchx-mongodb-password", {
+    length: 16,
+});
+
+const mongo = new aws.docdb.Cluster("searchx-mongo", {
+    backupRetentionPeriod: 5,
+    clusterIdentifier: "searchx-mongo-cluster",
+    engine: "docdb",
+    masterPassword: mongoPassword.result,
+    masterUsername: "searchx",
+    skipFinalSnapshot: true,
+});
+
+const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
+    domainName: "searchx-elasticsearch",
+    clusterConfig: {
+        instanceType: "t3.small.search",
+    },
+    engineVersion: "Elasticsearch_7.10",
+    ebsOptions: {
+        ebsEnabled: true,
+        volumeSize: 10,
+    },
+});
+
 export const bucketName = frontendBucket.id;
 
 export const cloudFrontDomain = cdn.domainName;
+
+export const redisEndpoint = redis.cacheNodes[0].address;
+
+export const mongoEndpoint = mongo.endpoint;
+
+export const elasticsearchEndpoint = elasticsearch.endpoint;
