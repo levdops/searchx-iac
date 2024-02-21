@@ -8,6 +8,13 @@ const frontendBucket = new aws.s3.Bucket("searchx-frontend", {
     },
 });
 
+const publicAccessBlock = new aws.s3.BucketPublicAccessBlock(
+    "public-access-block",
+    {
+        bucket: frontendBucket.id,
+    }
+);
+
 const originAccessIdentity = new aws.cloudfront.OriginAccessIdentity(
     "originAccessIdentity",
     {
@@ -81,13 +88,6 @@ const cdn = new aws.cloudfront.Distribution("cdn", {
     //     includeCookies: false,
     //     prefix: `${config.targetDomain}/`,
     // },
-});
-
-const bucketObject = new aws.s3.BucketObject("index.html", {
-    bucket: frontendBucket.id,
-    source: new pulumi.asset.FileAsset("./index.html"),
-    contentType: "text/html",
-    acl: "public-read",
 });
 
 export const bucketName = frontendBucket.id;
