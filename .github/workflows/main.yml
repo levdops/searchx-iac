@@ -34,4 +34,5 @@ jobs:
         uses: pulumi/actions@v5
         with:
           command: up
+          stack-name: dev
           github-token: ${{ secrets.GH_PAT }}
