@@ -6,6 +6,7 @@ import * as random from "@pulumi/random";
 // FRONTEND
 
 const frontendBucket = new aws.s3.Bucket("searchx-frontend", {
+    bucket: "searchx-frontend",
     website: {
         indexDocument: "index.html",
     },
@@ -104,15 +105,30 @@ const redis = new aws.elasticache.Cluster("searchx-redis", {
 
 const mongoPassword = new random.RandomPassword("searchx-mongodb-password", {
     length: 16,
+    special: false,
 });
 
-const mongo = new aws.docdb.Cluster("searchx-mongo", {
+const mongoParameterGroup = new aws.docdb.ClusterParameterGroup(
+    "searchx-mongo-parameter-group",
+    {
+        family: "docdb5.0",
+        parameters: [
+            {
+                name: "tls",
+                value: "disabled",
+            },
+        ],
+    }
+);
+
+const mongo = new aws.docdb.Cluster("searchx-mongo-parameter-group", {
     backupRetentionPeriod: 5,
     clusterIdentifier: "searchx-mongo-cluster",
     engine: "docdb",
     masterPassword: mongoPassword.result,
     masterUsername: "searchx",
     skipFinalSnapshot: true,
+    dbClusterParameterGroupName: mongoParameterGroup.name,
 });
 
 const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
@@ -127,12 +143,51 @@ const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
     },
 });
 
+const cluster = new aws.ecs.Cluster("searchx-ecs-cluster");
+const loadbalancer = new awsx.lb.ApplicationLoadBalancer("searchx-server-lb");
+
+const serverService = new awsx.ecs.FargateService("searchx-server", {
+    cluster: cluster.arn,
+    assignPublicIp: true,
+    taskDefinitionArgs: {
+        container: {
+            name: "searchx-server",
+            image: "ghcr.io/levdops/server:latest",
+            cpu: 128,
+            memory: 512,
+            essential: true,
+            portMappings: [
+                {
+                    containerPort: 80,
+                    targetGroup: loadbalancer.defaultTargetGroup,
+                },
+            ],
+            environment: [
+                { name: "NODE_ENV", value: "production" },
+                { name: "PORT", value: "80" },
+                { name: "SUGGESTIONS_TYPE", value: "none" },
+                { name: "DEFAULT_SEARCH_PROVIDER", value: "elasticsearch" },
+                { name: "ES_INDEX", value: "trec_car" },
+                {
+                    name: "DB",
+                    value: pulumi.interpolate`mongodb://${mongo.masterUsername}:${mongo.masterPassword}@${mongo.endpoint}:27017/searchx-pilot-app-1`,
+                },
+                {
+                    name: "REDIS",
+                    value: pulumi.interpolate`redis://${redis.cacheNodes[0].address}:6379`,
+                },
+                {
+                    name: "ELASTICSEARCH",
+                    value: pulumi.interpolate`${elasticsearch.endpoint}:9200`,
+                },
+            ],
+        },
+    },
+    desiredCount: 1,
+});
+
 export const bucketName = frontendBucket.id;
 
 export const cloudFrontDomain = cdn.domainName;
 
-export const redisEndpoint = redis.cacheNodes[0].address;
-
-export const mongoEndpoint = mongo.endpoint;
-
-export const elasticsearchEndpoint = elasticsearch.endpoint;
+export const serverEndpoint = loadbalancer.loadBalancer.dnsName;
