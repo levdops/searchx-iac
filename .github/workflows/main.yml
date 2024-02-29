@@ -16,8 +16,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Node
         uses: actions/setup-node@v4
-          with: 
-            node-version: 12
+        with: 
+          node-version: 12
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
