@@ -31,8 +31,7 @@ jobs:
       - name: Run npm install
         run: npm install
       - name: Setup Pulumi
-        uses: pulumi/actions@v3
+        uses: pulumi/actions@v5
         with:
-          command: preview
+          command: up
           github-token: ${{ secrets.GH_PAT }}
-          work-dir: infra
