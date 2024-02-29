@@ -2,7 +2,7 @@ name: IoC Deploy
 on: 
     push:
      branches:
-        - 'master'
+        - 'main'
     workflow_dispatch:
 
 permissions: write-all
@@ -31,7 +31,7 @@ jobs:
         with: 
           command: up
           stack-name: prod
-          cloud-url: s3://levdops-pulumi?region=eu-central-1&awssdk=v2&profile=default
+          cloud-url: s3://levdops-pulumi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
