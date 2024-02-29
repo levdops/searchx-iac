@@ -12,6 +12,16 @@ const frontendBucket = new aws.s3.Bucket("searchx-frontend", {
     },
 });
 
+const bucketOwnershipControls = new aws.s3.BucketOwnershipControls(
+    "ownership-controls",
+    {
+        bucket: frontendBucket.id,
+        rule: {
+            objectOwnership: "ObjectWriter",
+        },
+    }
+);
+
 const publicAccessBlock = new aws.s3.BucketPublicAccessBlock(
     "public-access-block",
     {
@@ -121,7 +131,7 @@ const mongoParameterGroup = new aws.docdb.ClusterParameterGroup(
     }
 );
 
-const mongo = new aws.docdb.Cluster("searchx-mongo-parameter-group", {
+const mongoCluster = new aws.docdb.Cluster("searchx-mongo-cluster", {
     backupRetentionPeriod: 5,
     clusterIdentifier: "searchx-mongo-cluster",
     engine: "docdb",
@@ -129,6 +139,12 @@ const mongo = new aws.docdb.Cluster("searchx-mongo-parameter-group", {
     masterUsername: "searchx",
     skipFinalSnapshot: true,
     dbClusterParameterGroupName: mongoParameterGroup.name,
+});
+
+const mongo = new aws.docdb.ClusterInstance("searchx-mongo-instance", {
+    clusterIdentifier: mongoCluster.id,
+    instanceClass: "db.t3.medium",
+    identifier: "searchx-mongo-instance",
 });
 
 const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
@@ -144,7 +160,26 @@ const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
 });
 
 const cluster = new aws.ecs.Cluster("searchx-ecs-cluster");
-const loadbalancer = new awsx.lb.ApplicationLoadBalancer("searchx-server-lb");
+
+const certificate = aws.acm.Certificate.get(
+    "searchx-certificate",
+    // TODO: make this a variable
+    "arn:aws:acm:eu-central-1:767397730875:certificate/173730c4-db25-4005-b164-6cb0cf7648a6"
+);
+// With ssl
+const loadbalancer = new awsx.lb.ApplicationLoadBalancer("searchx-server-lb", {
+    listeners: [
+        {
+            port: 80,
+            protocol: "HTTP",
+        },
+        {
+            port: 443,
+            protocol: "HTTPS",
+            certificateArn: certificate.arn,
+        },
+    ],
+});
 
 const serverService = new awsx.ecs.FargateService("searchx-server", {
     cluster: cluster.arn,
@@ -170,7 +205,7 @@ const serverService = new awsx.ecs.FargateService("searchx-server", {
                 { name: "ES_INDEX", value: "trec_car" },
                 {
                     name: "DB",
-                    value: pulumi.interpolate`mongodb://${mongo.masterUsername}:${mongo.masterPassword}@${mongo.endpoint}:27017/searchx-pilot-app-1`,
+                    value: pulumi.interpolate`mongodb://${mongoCluster.masterUsername}:${mongoCluster.masterPassword}@${mongoCluster.endpoint}:27017/searchx-pilot-app-1`,
                 },
                 {
                     name: "REDIS",
