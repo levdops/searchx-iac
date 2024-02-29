@@ -30,8 +30,8 @@ jobs:
         uses: pulumi/actions@v5
         with: 
           command: up
-          stack-name: searchx-iac
-          cloud-url: s3://levdops-pulumi
+          stack-name: prod
+          cloud-url: file://~
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
