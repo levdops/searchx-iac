@@ -25,9 +25,9 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Run npm install
-      - run: npm install
+        run: npm install
       - name: Setup Pulumi
-      - uses: pulumi/actions@v3
+        uses: pulumi/actions@v3
         with:
           github-token: ${{ secrets.GH_PAT }}
           work-dir: infra
