@@ -21,8 +21,12 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
+          aws-access-key-id: ${{ env.aws-access-key-id }}
+          aws-region: ${{ env.aws-region }}
+          aws-secret-access-key: ${{ env.aws-secret-access-key }}
+        env:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-region: 'eu-central-1'
+          aws-region: "eu-central-1"
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Run npm install
         run: npm install
