@@ -37,8 +37,6 @@ jobs:
           command: preview
           stack-name: prod
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cloud-url: s3://levdops-pulumi?region=eu-central-1&awssdk=v2&profile=default
+          cloud-url: s3://levdops-pulumi?region=eu-central-1&awssdk=v2
       - run: "echo finished"
-        env:
-          PULUMI_ACCESS_TOKEN: ""
 
