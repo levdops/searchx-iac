@@ -1,4 +1,4 @@
-name: IoC Deploy
+name: Infrastructure as Code Deployment
 on: 
     push:
      branches:
