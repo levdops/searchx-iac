@@ -33,12 +33,12 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - uses: pulumi/actions@v5
+        id: pulumi
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
         with:
           command: preview
-          stack-name: prod
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           cloud-url: s3://levdops-pulumi?region=eu-central-1&awssdk=v2
-        env:
-            PULUMI_CONFIG_PASSPHRASE: ${{secrets.PULUMI_CONFIG_PASSPHRASE}}
-      - run: "echo finished"
+          stack-name: prod
+      - run: echo "finished"
 
