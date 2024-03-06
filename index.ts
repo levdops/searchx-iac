@@ -161,25 +161,31 @@ const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
         volumeSize: 10,
     },
     // TODO: replace IP with the current machine pulumi is running on
-    accessPolicies: `{
-                      "Version": "2012-10-17",
-                      "Statement": [
-                        {
-                          "Effect": "Allow",
-                          "Principal": {
-                            "AWS": "*"
-                          },
-                          "Action": "es:*",
-                          "Resource": "arn:aws:es:eu-central-1:767397730875:domain/searchx-elasticsearch/*",
-                          "Condition": {
-                            "IpAddress": {
-                              "aws:SourceIp": "145.3.17.70" 
-                            }
-                          }
-                        }
-                      ]
-                    }`,
+    accessPolicies: JSON.stringify({
+        version: "2012-10-17",
+        Statement: [{
+            Effect: "Allow",
+            Action: "es:*",
+            Resource: "arn:aws:es:eu-central-1:767397730875:domain/searchx-elasticsearch/*",
+            Condition: {
+                arnLike: {
+                    "aws:SourceArn": "arn:aws:iam::767397730875:role/searchx-server-task"
+                }
+            }
+        },
+        {
+            Effect: "Allow",
+            Action: "es:*",
+            Resource: "arn:aws:es:eu-central-1:767397730875:domain/searchx-elasticsearch/*",
+            Condition: {
+                IpAddress: {
+                    "aws:SourceIp": "145.109.24.35"
+                }
+            }
+        }]
+    }),
 });
+
 
 const cluster = new aws.ecs.Cluster("searchx-ecs-cluster");
 
