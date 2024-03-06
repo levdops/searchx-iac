@@ -22,8 +22,12 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-region: ${{ secrets.AWS_REGION }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - run: npm install
-      - uses: pulumi/actions@v3
+      - run: pnpm install
+      - uses: pulumi/actions@v5
         with:
-          github-token: ${{ secrets.GH_PAT }}
-          work-dir: infra
+          command: preview
+          stack-name: prod
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cloud-url: s3://levdops-pulumi?region=eu-central-1&awssdk=v2&profile=default
+      - run: "echo finished"
+
