@@ -29,11 +29,10 @@ const publicAccessBlock = new aws.s3.BucketPublicAccessBlock(
     }
 );
 
-const originAccessIdentity = new aws.cloudfront.OriginAccessIdentity(
-    "originAccessIdentity",
-    {
-        comment: "this is needed to setup s3 polices and make s3 not public.",
-    }
+const certificate = aws.acm.Certificate.get(
+    "searchx-certificate",
+    // TODO: make this a variable
+    "arn:aws:acm:eu-central-1:767397730875:certificate/173730c4-db25-4005-b164-6cb0cf7648a6"
 );
 
 const cdn = new aws.cloudfront.Distribution("cdn", {
@@ -46,12 +45,17 @@ const cdn = new aws.cloudfront.Distribution("cdn", {
     origins: [
         {
             originId: frontendBucket.arn,
-            domainName: frontendBucket.bucketRegionalDomainName,
-            s3OriginConfig: {
-                originAccessIdentity:
-                    originAccessIdentity.cloudfrontAccessIdentityPath,
-            },
+            domainName: frontendBucket.websiteEndpoint,
+            customOriginConfig: {
+                originProtocolPolicy: "http-only",
+                httpPort: 80,
+                httpsPort: 443,
+                originSslProtocols: ['TLSv1.2']
+            }
         },
+    ],
+    aliases: [
+        "searchx.geisink.com"
     ],
 
     defaultRootObject: "index.html",
@@ -92,9 +96,9 @@ const cdn = new aws.cloudfront.Distribution("cdn", {
     },
 
     viewerCertificate: {
-        // acmCertificateArn: certificateArn,  // Per AWS, ACM certificate must be in the us-east-1 region.
-        cloudfrontDefaultCertificate: true,
-        // sslSupportMethod: "sni-only",
+        acmCertificateArn: "arn:aws:acm:us-east-1:767397730875:certificate/7837223a-390e-4d97-bd9b-793c50f496cc",  // Per AWS, ACM certificate must be in the us-east-1 region.
+        //cloudfrontDefaultCertificate: true,
+        sslSupportMethod: "sni-only",
     },
 
     // loggingConfig: {
@@ -157,15 +161,29 @@ const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
         ebsEnabled: true,
         volumeSize: 10,
     },
+    // TODO: replace IP with the current machine pulumi is running on
+    accessPolicies: `{
+                      "Version": "2012-10-17",
+                      "Statement": [
+                        {
+                          "Effect": "Allow",
+                          "Principal": {
+                            "AWS": "*"
+                          },
+                          "Action": "es:*",
+                          "Resource": "arn:aws:es:eu-central-1:767397730875:domain/searchx-elasticsearch/*",
+                          "Condition": {
+                            "IpAddress": {
+                              "aws:SourceIp": "145.3.17.70" 
+                            }
+                          }
+                        }
+                      ]
+                    }`
 });
 
 const cluster = new aws.ecs.Cluster("searchx-ecs-cluster");
 
-const certificate = aws.acm.Certificate.get(
-    "searchx-certificate",
-    // TODO: make this a variable
-    "arn:aws:acm:eu-central-1:767397730875:certificate/173730c4-db25-4005-b164-6cb0cf7648a6"
-);
 // With ssl
 const loadbalancer = new awsx.lb.ApplicationLoadBalancer("searchx-server-lb", {
     listeners: [
@@ -181,9 +199,59 @@ const loadbalancer = new awsx.lb.ApplicationLoadBalancer("searchx-server-lb", {
     ],
 });
 
+// const httpListener = new aws.lb.Listener("http-listener", {
+//     loadBalancerArn: loadbalancer.loadBalancer.arn,
+//     port: 80,
+//     protocol: "HTTP",
+//     defaultActions: [{
+//         type: "fixed-response",
+//         fixedResponse: {
+//             contentType: "text/plain",
+//             statusCode: "404",
+//         },
+//     }],
+// })
+//
+// const httpRedirect = new aws.lb.ListenerRule("httpRedirect", {
+//     listenerArn: httpListener.arn,
+//     conditions: [
+//         {
+//             pathPattern: {
+//                 values: ["/*"], // Apply to all requests
+//             },
+//         },
+//     ],
+//     actions: [{
+//         type: "redirect",
+//         redirect: {
+//             protocol: "HTTPS",
+//             port: "443",
+//             statusCode: "HTTP_301", // Permanent redirect
+//         },
+//     }],
+//     priority: 200, // The rule priority, adjust as necessary
+// });
+// const backendVpc = new aws.ec2.Vpc("searchx-backend-vpc", {
+//     cidrBlock: "10.0.0.0/24",
+//     instanceTenancy: "default",
+//     tags: {
+//         Name: "main",
+//     },
+// });
+//
+// const privateSubnet = new aws.ec2.Subnet("searchx-backend-lb-subnet", {
+//     vpcId: backendVpc.id,
+//     cidrBlock: "10.0.0.0/24",
+//     mapPublicIpOnLaunch: false,
+// })
+
 const serverService = new awsx.ecs.FargateService("searchx-server", {
     cluster: cluster.arn,
     assignPublicIp: true,
+    // networkConfiguration: {
+    //     assignPublicIp: false,
+    //     subnets: [privateSubnet.id]
+    // },
     taskDefinitionArgs: {
         container: {
             name: "searchx-server",
@@ -212,8 +280,8 @@ const serverService = new awsx.ecs.FargateService("searchx-server", {
                     value: pulumi.interpolate`redis://${redis.cacheNodes[0].address}:6379`,
                 },
                 {
-                    name: "ELASTICSEARCH",
-                    value: pulumi.interpolate`${elasticsearch.endpoint}:9200`,
+                    name: "ELASTIC_SEARCH",
+                    value: pulumi.interpolate`https://${elasticsearch.endpoint}`,
                 },
             ],
         },
@@ -221,6 +289,7 @@ const serverService = new awsx.ecs.FargateService("searchx-server", {
     desiredCount: 1,
 });
 
+service.
 export const bucketName = frontendBucket.id;
 
 export const cloudFrontDomain = cdn.domainName;
