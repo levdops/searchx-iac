@@ -50,13 +50,11 @@ const cdn = new aws.cloudfront.Distribution("cdn", {
                 originProtocolPolicy: "http-only",
                 httpPort: 80,
                 httpsPort: 443,
-                originSslProtocols: ['TLSv1.2']
-            }
+                originSslProtocols: ["TLSv1.2"],
+            },
         },
     ],
-    aliases: [
-        "searchx.geisink.com"
-    ],
+    aliases: ["searchx.geisink.com"],
 
     defaultRootObject: "index.html",
 
@@ -96,7 +94,8 @@ const cdn = new aws.cloudfront.Distribution("cdn", {
     },
 
     viewerCertificate: {
-        acmCertificateArn: "arn:aws:acm:us-east-1:767397730875:certificate/7837223a-390e-4d97-bd9b-793c50f496cc",  // Per AWS, ACM certificate must be in the us-east-1 region.
+        acmCertificateArn:
+            "arn:aws:acm:us-east-1:767397730875:certificate/7837223a-390e-4d97-bd9b-793c50f496cc", // Per AWS, ACM certificate must be in the us-east-1 region.
         //cloudfrontDefaultCertificate: true,
         sslSupportMethod: "sni-only",
     },
@@ -179,7 +178,7 @@ const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
                           }
                         }
                       ]
-                    }`
+                    }`,
 });
 
 const cluster = new aws.ecs.Cluster("searchx-ecs-cluster");
@@ -289,7 +288,6 @@ const serverService = new awsx.ecs.FargateService("searchx-server", {
     desiredCount: 1,
 });
 
-service.
 export const bucketName = frontendBucket.id;
 
 export const cloudFrontDomain = cdn.domainName;
