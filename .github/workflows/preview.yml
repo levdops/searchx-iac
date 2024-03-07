@@ -1,9 +1,6 @@
-name: Infrastructure as Code Deployment
-on: 
-    push:
-     branches:
-        - 'master'
-    workflow_dispatch:
+name: Infrastructure as Code Preview
+
+on: [pull_request]
 
 jobs:
   update:
@@ -32,7 +29,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         with:
-          command: up
+          command: preview
           cloud-url: s3://levdops-pulumi?region=eu-central-1&awssdk=v2
           stack-name: prod
       - run: echo "finished"
