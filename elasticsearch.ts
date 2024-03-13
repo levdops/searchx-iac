@@ -12,7 +12,7 @@ const elasticPassword = new random.RandomPassword("searchx-elasticsearch-passwor
 const elasticSecret = new aws.secretsmanager.Secret("aws-elastic-password", {
     name: "searchx-elastic-password",
 })
-const mongoSecretVersion = new aws.secretsmanager.SecretVersion("aws-elastic-password-v1", {
+const elasticSecretVersion = new aws.secretsmanager.SecretVersion("aws-elastic-password-v1", {
     secretId: elasticSecret.id,
     secretString: elasticPassword.result,
 })
