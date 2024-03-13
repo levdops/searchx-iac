@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as awsx from "@pulumi/awsx";
-import * as random from "@pulumi/random";
-
+import * as elasticImpl from "./elasticsearch";
+import * as mongoImpl from "./mongodb";
 // FRONTEND
 
 const frontendBucket = new aws.s3.Bucket("searchx-frontend", {
@@ -116,77 +116,6 @@ const redis = new aws.elasticache.Cluster("searchx-redis", {
     numCacheNodes: 1,
 });
 
-const mongoPassword = new random.RandomPassword("searchx-mongodb-password", {
-    length: 16,
-    special: false,
-});
-
-const mongoParameterGroup = new aws.docdb.ClusterParameterGroup(
-    "searchx-mongo-parameter-group",
-    {
-        family: "docdb5.0",
-        parameters: [
-            {
-                name: "tls",
-                value: "disabled",
-            },
-        ],
-    }
-);
-
-const mongoCluster = new aws.docdb.Cluster("searchx-mongo-cluster", {
-    backupRetentionPeriod: 5,
-    clusterIdentifier: "searchx-mongo-cluster",
-    engine: "docdb",
-    masterPassword: mongoPassword.result,
-    masterUsername: "searchx",
-    skipFinalSnapshot: true,
-    dbClusterParameterGroupName: mongoParameterGroup.name,
-});
-
-const mongo = new aws.docdb.ClusterInstance("searchx-mongo-instance", {
-    clusterIdentifier: mongoCluster.id,
-    instanceClass: "db.t3.medium",
-    identifier: "searchx-mongo-instance",
-});
-
-const elasticsearch = new aws.opensearch.Domain("searchx-elasticsearch", {
-    domainName: "searchx-elasticsearch",
-    clusterConfig: {
-        instanceType: "t3.small.search",
-    },
-    engineVersion: "Elasticsearch_7.10",
-    ebsOptions: {
-        ebsEnabled: true,
-        volumeSize: 10,
-    },
-    // TODO: replace IP with the current machine pulumi is running on
-    accessPolicies: JSON.stringify({
-        version: "2012-10-17",
-        Statement: [{
-            Effect: "Allow",
-            Action: "es:*",
-            Resource: "arn:aws:es:eu-central-1:767397730875:domain/searchx-elasticsearch/*",
-            Condition: {
-                arnLike: {
-                    "aws:SourceArn": "arn:aws:iam::767397730875:role/searchx-server-task"
-                }
-            }
-        },
-        {
-            Effect: "Allow",
-            Action: "es:*",
-            Resource: "arn:aws:es:eu-central-1:767397730875:domain/searchx-elasticsearch/*",
-            Condition: {
-                IpAddress: {
-                    "aws:SourceIp": "145.109.24.35"
-                }
-            }
-        }]
-    }),
-});
-
-
 const cluster = new aws.ecs.Cluster("searchx-ecs-cluster");
 
 // With ssl
@@ -250,6 +179,7 @@ const loadbalancer = new awsx.lb.ApplicationLoadBalancer("searchx-server-lb", {
 //     mapPublicIpOnLaunch: false,
 // })
 
+
 const serverService = new awsx.ecs.FargateService("searchx-server", {
     cluster: cluster.arn,
     assignPublicIp: true,
@@ -278,7 +208,7 @@ const serverService = new awsx.ecs.FargateService("searchx-server", {
                 { name: "ES_INDEX", value: "trec_car" },
                 {
                     name: "DB",
-                    value: pulumi.interpolate`mongodb://${mongoCluster.masterUsername}:${mongoCluster.masterPassword}@${mongoCluster.endpoint}:27017/searchx-pilot-app-1`,
+                    value: pulumi.interpolate`mongodb://${mongoImpl.mongoClusterImpl.masterUsername}:${aws.secretsmanager.getSecretVersionOutput({secretId: mongoImpl.mongoDBSecret.arn}).secretString}@${mongoImpl.mongoClusterImpl.endpoint}:27017/searchx-pilot-app-1`,
                 },
                 {
                     name: "REDIS",
@@ -286,7 +216,7 @@ const serverService = new awsx.ecs.FargateService("searchx-server", {
                 },
                 {
                     name: "ELASTIC_SEARCH",
-                    value: pulumi.interpolate`https://${elasticsearch.endpoint}`,
+                    value: pulumi.interpolate`https://elasticSearchXUser:${aws.secretsmanager.getSecretVersionOutput({secretId: elasticImpl.elasticSearchSecret.arn}).secretString}@${elasticImpl.elasticSearchEndpoint}`,
                 },
             ],
         },
@@ -294,6 +224,7 @@ const serverService = new awsx.ecs.FargateService("searchx-server", {
     desiredCount: 1,
 });
 
+export const elasticPass = aws.secretsmanager.getSecretVersionOutput({secretId: elasticImpl.elasticSearchSecret.arn}).secretString;
 export const bucketName = frontendBucket.id;
 
 export const cloudFrontDomain = cdn.domainName;
