@@ -6,7 +6,7 @@ const mongoPassword = new random.RandomPassword("searchx-mongodb-password", {
     special: false,
 });
 const mongoSecret = new aws.secretsmanager.Secret("aws-mongodb-password", {
-    name: "searchx-mongodb-password",
+    namePrefix: "searchx-mongodb-password",
 })
 const mongoSecretVersion = new aws.secretsmanager.SecretVersion("aws-mongodb-password-v1", {
     secretId: mongoSecret.id,

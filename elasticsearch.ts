@@ -10,7 +10,7 @@ const elasticPassword = new random.RandomPassword("searchx-elasticsearch-passwor
     overrideSpecial: '!*'
 });
 const elasticSecret = new aws.secretsmanager.Secret("aws-elastic-password", {
-    name: "searchx-elastic-password",
+    namePrefix: "searchx-elastic-password",
 })
 const elasticSecretVersion = new aws.secretsmanager.SecretVersion("aws-elastic-password-v1", {
     secretId: elasticSecret.id,
